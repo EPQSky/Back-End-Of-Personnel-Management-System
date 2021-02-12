@@ -1,5 +1,6 @@
 package icu.epq.mailserver;
 
+import icu.epq.minihr.model.MailConstants;
 import org.springframework.amqp.core.Queue;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -14,6 +15,6 @@ public class MailserverApplication {
 
     @Bean
     Queue queue() {
-        return new Queue("epq.mail.welcome");
+        return new Queue(MailConstants.MAIL_QUEUE_NAME);
     }
 }

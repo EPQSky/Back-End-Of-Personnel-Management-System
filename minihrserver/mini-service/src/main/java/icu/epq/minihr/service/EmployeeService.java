@@ -3,9 +3,12 @@ package icu.epq.minihr.service;
 
 import icu.epq.minihr.mapper.EmployeeMapper;
 import icu.epq.minihr.model.Employee;
+import icu.epq.minihr.model.MailConstants;
+import icu.epq.minihr.model.MailSendLog;
 import icu.epq.minihr.model.RespPageBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.amqp.RabbitTemplateConfigurer;
@@ -13,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * @author EPQ
@@ -25,6 +29,9 @@ public class EmployeeService {
 
     @Autowired
     RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    MailSendLogService mailSendLogService;
 
     public static final Logger LOGGER = LoggerFactory.getLogger(EmployeeService.class);
 
@@ -55,8 +62,17 @@ public class EmployeeService {
         int result = employeeMapper.insertSelective(employee);
         if (result == 1) {
             Employee emp = employeeMapper.getEmployeeById(employee.getId());
-            LOGGER.info(emp.toString());
-            rabbitTemplate.convertAndSend("epq.mail.welcome", emp);
+            //生成消息的唯一id
+            String msgId = UUID.randomUUID().toString();
+            MailSendLog mailSendLog = new MailSendLog();
+            mailSendLog.setMsgId(msgId);
+            mailSendLog.setCreateTime(new Date());
+            mailSendLog.setExchange(MailConstants.MAIL_EXCHANGE_NAME);
+            mailSendLog.setRouteKey(MailConstants.MAIL_ROUTING_KEY_NAME);
+            mailSendLog.setEmpId(emp.getId());
+            mailSendLog.setTryTime(new Date(System.currentTimeMillis() + 1000 * 60 * MailConstants.MSG_TIMEOUT));
+            mailSendLogService.insert(mailSendLog);
+            rabbitTemplate.convertAndSend(MailConstants.MAIL_EXCHANGE_NAME, MailConstants.MAIL_ROUTING_KEY_NAME, emp, new CorrelationData(msgId));
         }
         return result;
     }
@@ -71,5 +87,9 @@ public class EmployeeService {
 
     public Integer updateEmployee(Employee employee) {
         return employeeMapper.updateByPrimaryKeySelective(employee);
+    }
+
+    public Employee getEmployeeById(Integer empId) {
+        return employeeMapper.getEmployeeById(empId);
     }
 }

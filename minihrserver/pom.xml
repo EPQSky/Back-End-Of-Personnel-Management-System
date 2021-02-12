@@ -15,6 +15,7 @@
         <module>mini-mapper</module>
         <module>mini-model</module>
         <module>mini-service</module>
+        <module>minihr-web</module>
     </modules>
 
     <properties>
